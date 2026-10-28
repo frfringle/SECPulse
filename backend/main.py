@@ -86,7 +86,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SECPulse",
     version="0.1.0",
-    description="Personal SEC EDGAR alert dashboard (Stage 1: ingestion)",
+    description="Personal SEC EDGAR alert dashboard (Stage 2: Form 4 parser)",
     lifespan=lifespan,
 )
 
@@ -97,15 +97,20 @@ def health() -> JSONResponse:
         {
             "status": "ok",
             "service": "secpulse",
-            "stage": 1,
+            "stage": 2,
         }
     )
 
 
 @app.get("/api/alerts")
 def alerts_stub() -> JSONResponse:
-    """Stub for later stages."""
-    return JSONResponse({"alerts": [], "detail": "Stage 2+ not implemented yet"})
+    """Stub — full alert API lands in Stage 6; Form 4 rule hits are in DB now."""
+    return JSONResponse(
+        {
+            "alerts": [],
+            "detail": "Alert API not implemented yet; Form 4 alert_by_rule rows are stored",
+        }
+    )
 
 
 def run() -> None:

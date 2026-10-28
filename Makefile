@@ -10,5 +10,5 @@ test:
 run:
 	.venv/bin/python -m backend.main
 
-# Stage 1: API only. Later stages will also start the Vite frontend here.
+# API only for now. Later stages will also start the Vite frontend here.
 dev: run

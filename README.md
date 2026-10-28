@@ -1,7 +1,7 @@
 # SECPulse
 
 Personal SEC EDGAR alert dashboard: poll filings → score with local Ollama → live feed.  
-**Stage 1 (this tree): ingestion + SQLite only.**
+**Current stage: 2 — ingestion + Form 4 XML parser (no LLM).**
 
 ## Requirements
 
@@ -22,7 +22,7 @@ cp .env.example .env
 
 The app **refuses to start** if `SEC_USER_AGENT` is missing or not in `Name email@example.com` form.
 
-## Run (Stage 1)
+## Run
 
 ```bash
 source .venv/bin/activate
@@ -36,6 +36,7 @@ python -m backend.main
 - Stores watched forms (`8-K`, `8-K/A`, `4`, `SC 13D`, `SC 13D/A`) in `data/secpulse.db`
 - Dedupes by accession number; skips filings with no CIK→ticker mapping
 - Rate-limits SEC requests to 8/sec with backoff on 403/429
+- **Form 4:** downloads ownership XML, extracts insider/role/code/shares/price/value; open-market buys (`P`) by officers/directors are stored with `alert_by_rule=true` (grants + 10b5-1 sales ignored for that path)
 
 ## Tests
 
@@ -44,7 +45,7 @@ source .venv/bin/activate
 pytest -q
 ```
 
-Fixtures live under `tests/fixtures/` (saved Atom XML + company tickers JSON).
+Fixtures live under `tests/fixtures/` (Atom XML, company tickers JSON, Form 4 ownership XML).
 
 ## Layout
 
