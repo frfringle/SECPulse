@@ -8,6 +8,7 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
+from backend.api.state import app_state
 from backend.config import ATOM_FEED_URL, Settings
 from backend.models import Filing, Form4TransactionRow
 from backend.sec.atom import ParsedFiling, parse_atom_feed
@@ -46,12 +47,18 @@ class FilingPoller:
             xml_text = response.text
         except Exception as exc:  # noqa: BLE001 — graceful SEC failure
             logger.error("Atom poll failed (will retry next interval): %s", exc)
+            app_state.last_poll_at = datetime.now(timezone.utc)
+            app_state.last_poll_inserted = 0
+            app_state.last_poll_error = str(exc)[:300]
             return 0
 
         try:
             parsed = parse_atom_feed(xml_text)
         except Exception as exc:  # noqa: BLE001
             logger.error("Atom parse failed: %s", exc)
+            app_state.last_poll_at = datetime.now(timezone.utc)
+            app_state.last_poll_inserted = 0
+            app_state.last_poll_error = str(exc)[:300]
             return 0
 
         self.ticker_cache.load()
@@ -70,6 +77,10 @@ class FilingPoller:
                 logger.info("Processed %s queued filing job(s)", processed)
         except Exception as exc:  # noqa: BLE001
             logger.error("Queue processing error: %s", exc)
+
+        app_state.last_poll_at = datetime.now(timezone.utc)
+        app_state.last_poll_inserted = inserted
+        app_state.last_poll_error = None
 
         logger.info(
             "Atom poll complete parsed=%s inserted=%s queue_remaining=%s",

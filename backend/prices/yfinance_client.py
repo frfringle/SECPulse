@@ -49,12 +49,17 @@ class YFinanceClient:
         history_fetcher: Optional[
             Callable[[str, datetime], Optional[float]]
         ] = None,
+        series_fetcher: Optional[
+            Callable[[str, str, str], list[dict[str, Any]]]
+        ] = None,
     ) -> None:
         self.ttl_seconds = ttl_seconds
         self._fetcher = fetcher or _default_fetch_snapshot
         self._history_fetcher = history_fetcher or _default_fetch_price_at
+        self._series_fetcher = series_fetcher or _default_fetch_series
         self._cache: dict[str, TickerSnapshot] = {}
         self._hist_cache: dict[tuple[str, str], tuple[float, Optional[float]]] = {}
+        self._series_cache: dict[tuple[str, str, str], tuple[float, list[dict[str, Any]]]] = {}
         self._lock = threading.Lock()
 
     def get_snapshot(self, ticker: str) -> TickerSnapshot:
@@ -127,10 +132,44 @@ class YFinanceClient:
             self._hist_cache[cache_key] = (now, price)
         return price
 
+    def get_history(
+        self,
+        ticker: str,
+        *,
+        period: str = "5d",
+        interval: str = "1d",
+    ) -> list[dict[str, Any]]:
+        """Return OHLCV points for charts. Soft-fails to []."""
+        key = (ticker or "").strip().upper()
+        if not key:
+            return []
+        cache_key = (key, period, interval)
+        now = time.monotonic()
+        with self._lock:
+            hit = self._series_cache.get(cache_key)
+            if hit is not None and (now - hit[0]) < self.ttl_seconds:
+                return list(hit[1])
+
+        try:
+            points = self._series_fetcher(key, period, interval)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning(
+                "yfinance series failed ticker=%s period=%s error=%s",
+                key,
+                period,
+                exc,
+            )
+            points = []
+
+        with self._lock:
+            self._series_cache[cache_key] = (now, points)
+        return list(points)
+
     def clear_cache(self) -> None:
         with self._lock:
             self._cache.clear()
             self._hist_cache.clear()
+            self._series_cache.clear()
 
 
 def _as_float(value: Any) -> Optional[float]:
@@ -206,3 +245,34 @@ def _default_fetch_price_at(ticker: str, when: datetime) -> Optional[float]:
     if on_or_before:
         return on_or_before[-1][1]
     return closes[0][1]
+
+
+def _default_fetch_series(
+    ticker: str, period: str, interval: str
+) -> list[dict[str, Any]]:
+    import yfinance as yf
+
+    t = yf.Ticker(ticker)
+    hist = t.history(period=period, interval=interval)
+    if hist is None or hist.empty:
+        return []
+    points: list[dict[str, Any]] = []
+    for idx, row in hist.iterrows():
+        try:
+            ts = idx.to_pydatetime()
+            if ts.tzinfo is None:
+                ts = ts.replace(tzinfo=timezone.utc)
+            iso = ts.astimezone(timezone.utc).isoformat()
+        except Exception:  # noqa: BLE001
+            iso = str(idx)
+        points.append(
+            {
+                "t": iso,
+                "open": _as_float(row.get("Open")),
+                "high": _as_float(row.get("High")),
+                "low": _as_float(row.get("Low")),
+                "close": _as_float(row.get("Close")),
+                "volume": _as_float(row.get("Volume")),
+            }
+        )
+    return points

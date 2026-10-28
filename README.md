@@ -1,7 +1,7 @@
 # SECPulse
 
 Personal SEC EDGAR alert dashboard: poll filings → score with local Ollama → live feed.  
-**Current stage: 5 — price enrichment via yfinance (API/SSE + frontend still later).**
+**Current stage: 6 — REST + SSE API (React frontend is Stage 7).**
 
 ## Requirements
 
@@ -32,8 +32,11 @@ python -m backend.main
 # or: uvicorn backend.main:app --host 0.0.0.0 --port 8000
 ```
 
-- Health: `GET http://localhost:8000/api/health`
-- Alerts stub: `GET http://localhost:8000/api/alerts`
+- Health: `GET /api/health` — last poll, queue size, Ollama reachable
+- Alerts: `GET /api/alerts` — filters: `ticker`, `direction`, `form_type`, `min_confidence`, `market_cap_bucket`
+- Alert detail: `GET /api/alerts/{id}`
+- Ticker: `GET /api/tickers/{ticker}` — recent alerts + intraday/5-day history
+- Live stream: `GET /api/stream` — SSE (`event: alert`)
 - Polls `https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent&output=atom` every 30s
 - Stores watched forms (`8-K`, `8-K/A`, `4`, `SC 13D`, `SC 13D/A`) in `data/secpulse.db`
 - Dedupes by accession number; skips filings with no CIK→ticker mapping

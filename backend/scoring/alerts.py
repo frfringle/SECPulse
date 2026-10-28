@@ -7,6 +7,8 @@ from typing import Optional
 
 from sqlmodel import Session, select
 
+from backend.api.serialize import alert_to_dict
+from backend.api.sse import alert_bus
 from backend.models import Alert, EightKExtraction, Filing, ScoringQueueItem
 from backend.prices.enrichment import enrich_alert_fields
 from backend.prices.yfinance_client import YFinanceClient
@@ -78,6 +80,11 @@ def create_alert(
         enrichment_error=enrichment.enrichment_error,
     )
     session.add(alert)
+    session.flush()  # assign alert.id before SSE broadcast
+    try:
+        alert_bus.publish(alert_to_dict(alert))
+    except Exception:  # noqa: BLE001 — never fail alert persistence on SSE
+        pass
     return alert
 
 
