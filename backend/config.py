@@ -48,8 +48,29 @@ class Settings(BaseSettings):
     ticker_cache_path: Path = Field(
         default=PROJECT_ROOT / "data" / "ticker_cache.json",
     )
-    # Approx token budget for combined 8-K / 13D text fed to Ollama later
+    # Approx token budget for combined 8-K / 13D text fed to Ollama
     token_budget: int = Field(default=4000, alias="TOKEN_BUDGET")
+
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        alias="OLLAMA_BASE_URL",
+    )
+    ollama_model: str = Field(
+        default="qwen2.5:1.5b-instruct",
+        alias="OLLAMA_MODEL",
+    )
+    ollama_timeout_seconds: float = Field(
+        default=60.0,
+        alias="OLLAMA_TIMEOUT_SECONDS",
+    )
+    alert_threshold: int = Field(default=65, alias="ALERT_THRESHOLD")
+
+    @field_validator("alert_threshold")
+    @classmethod
+    def validate_threshold(cls, value: int) -> int:
+        if value < 0 or value > 100:
+            raise ValueError("ALERT_THRESHOLD must be 0-100")
+        return value
 
     @field_validator("sec_user_agent")
     @classmethod

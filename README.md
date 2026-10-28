@@ -1,7 +1,7 @@
 # SECPulse
 
 Personal SEC EDGAR alert dashboard: poll filings → score with local Ollama → live feed.  
-**Current stage: 3 — ingestion + Form 4 + 8-K / SC 13D extraction (no LLM scoring yet).**
+**Current stage: 4 — Ollama scoring + alerts (no price enrichment / frontend yet).**
 
 ## Requirements
 
@@ -18,6 +18,8 @@ pip install -r requirements.txt
 
 cp .env.example .env
 # edit .env — set SEC_USER_AGENT="Your Name you@example.com"
+# optional: OLLAMA_MODEL, ALERT_THRESHOLD
+ollama pull qwen2.5:1.5b-instruct   # local scoring model
 ```
 
 The app **refuses to start** if `SEC_USER_AGENT` is missing or not in `Name email@example.com` form.
@@ -38,6 +40,7 @@ python -m backend.main
 - Rate-limits SEC requests to 8/sec with backoff on 403/429
 - **Form 4:** downloads ownership XML, extracts insider/role/code/shares/price/value; open-market buys (`P`) by officers/directors are stored with `alert_by_rule=true` (grants + 10b5-1 sales ignored for that path)
 - **8-K / SC 13D:** priority queue (Form 4 buys → SC 13D → high-priority 8-K items `1.01,1.03,2.01,2.05,2.06,3.01,4.01,4.02,5.02`); item text + Exhibit 99.1 or `no press release`; SC 13D filer / stake % / Item 4; text truncated to `TOKEN_BUDGET`
+- **Ollama scoring:** `OLLAMA_MODEL` at `http://localhost:11434` (JSON mode); alert if `direction != neutral` and `confidence >= ALERT_THRESHOLD` (default 65); Form 4 open-market buys alert by rule; if Ollama is down/slow the filing is queued and retried (never dropped)
 
 ## Tests
 

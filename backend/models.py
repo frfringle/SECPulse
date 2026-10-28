@@ -32,6 +32,11 @@ class Filing(SQLModel, table=True):
     content_parsed: Optional[bool] = Field(default=None)
     queue_priority: Optional[int] = Field(default=None, index=True)
     queue_reason: Optional[str] = Field(default=None, max_length=128)
+    # Stage 4: scoring
+    # pending | scored | alerted | awaiting_ollama
+    score_status: Optional[str] = Field(default=None, index=True, max_length=32)
+    score_attempts: int = Field(default=0)
+    last_score_error: Optional[str] = Field(default=None, max_length=512)
 
 
 class Form4TransactionRow(SQLModel, table=True):
@@ -95,3 +100,45 @@ class SC13DExtraction(SQLModel, table=True):
     combined_text: str = Field(default="")
     truncated: bool = Field(default=False)
     created_at: datetime = Field(default_factory=_utcnow)
+
+
+class Alert(SQLModel, table=True):
+    """Persisted alert from Ollama score or Form 4 rule."""
+
+    __tablename__ = "alerts"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    filing_id: int = Field(index=True, foreign_key="filings.id")
+    accession_number: str = Field(index=True, max_length=32)
+    ticker: str = Field(index=True, max_length=16)
+    form_type: str = Field(default="", max_length=32)
+    company_name: str = Field(default="", max_length=512)
+    direction: str = Field(index=True, max_length=16)
+    confidence: int = Field(default=0)
+    summary: str = Field(default="")
+    key_evidence: str = Field(default="")
+    event_type: str = Field(default="", max_length=128)
+    # "ollama" | "form4_rule"
+    source: str = Field(default="ollama", index=True, max_length=32)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class ScoringQueueItem(SQLModel, table=True):
+    """Durable retry queue when Ollama is down/slow or JSON invalid after retry."""
+
+    __tablename__ = "scoring_queue"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    filing_id: int = Field(index=True, foreign_key="filings.id")
+    accession_number: str = Field(index=True, max_length=32)
+    form_type: str = Field(default="", max_length=32)
+    ticker: str = Field(default="", max_length=16)
+    company_name: str = Field(default="", max_length=512)
+    filing_text: str = Field(default="")
+    priority: int = Field(default=0, index=True)
+    attempts: int = Field(default=0)
+    last_error: Optional[str] = Field(default=None, max_length=512)
+    # pending | done
+    status: str = Field(default="pending", index=True, max_length=16)
+    created_at: datetime = Field(default_factory=_utcnow)
+    updated_at: datetime = Field(default_factory=_utcnow)

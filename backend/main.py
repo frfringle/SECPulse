@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SECPulse",
     version="0.1.0",
-    description="Personal SEC EDGAR alert dashboard (Stage 3: 8-K / SC 13D)",
+    description="Personal SEC EDGAR alert dashboard (Stage 4: Ollama scoring)",
     lifespan=lifespan,
 )
 
@@ -105,20 +105,35 @@ def health() -> JSONResponse:
         {
             "status": "ok",
             "service": "secpulse",
-            "stage": 3,
+            "stage": 4,
         }
     )
 
 
 @app.get("/api/alerts")
-def alerts_stub() -> JSONResponse:
-    """Stub — full alert API lands in Stage 6."""
-    return JSONResponse(
-        {
-            "alerts": [],
-            "detail": "Alert API not implemented yet; extractions stored in DB",
-        }
-    )
+def list_alerts() -> JSONResponse:
+    """Minimal alert list for Stage 4 storage verification (full API in Stage 6)."""
+    from sqlmodel import select
+
+    from backend.models import Alert
+
+    with session_scope() as session:
+        rows = list(session.exec(select(Alert).order_by(Alert.created_at.desc())).all())  # type: ignore[attr-defined]
+        payload = [
+            {
+                "id": r.id,
+                "ticker": r.ticker,
+                "form_type": r.form_type,
+                "direction": r.direction,
+                "confidence": r.confidence,
+                "summary": r.summary,
+                "event_type": r.event_type,
+                "source": r.source,
+                "accession_number": r.accession_number,
+            }
+            for r in rows[:100]
+        ]
+    return JSONResponse({"alerts": payload, "count": len(payload)})
 
 
 def run() -> None:
