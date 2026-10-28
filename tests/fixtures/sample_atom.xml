@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<feed xmlns="http://www.w3.org/2005/Atom">
+  <title>Latest Filings - Wed, 28 Oct 2026 12:00:00 EDT</title>
+  <link rel="alternate" href="https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent"/>
+  <id>https://www.sec.gov/cgi-bin/browse-edgar?action=getcurrent</id>
+  <updated>2026-10-28T16:00:00-04:00</updated>
+
+  <entry>
+    <title>8-K - Apple Inc. (0000320193) (Filer)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/320193/000032019326000001/0000320193-26-000001-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0000320193-26-000001</id>
+    <updated>2026-10-28T15:55:12-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0000320193-26-000001 Size: 50 KB</summary>
+  </entry>
+
+  <entry>
+    <title>4 - Tesla, Inc. (0001318605) (Reporting)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/1318605/000131860526000010/0001318605-26-000010-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0001318605-26-000010</id>
+    <updated>2026-10-28T15:50:00-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0001318605-26-000010 Size: 12 KB</summary>
+  </entry>
+
+  <entry>
+    <title>SC 13D - Acme Holdings LLC (0009999999) (Filer)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/9999999/000999999926000002/0009999999-26-000002-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0009999999-26-000002</id>
+    <updated>2026-10-28T15:40:00-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0009999999-26-000002 Size: 80 KB</summary>
+  </entry>
+
+  <entry>
+    <title>SC 13D/A - Berkshire Hathaway Inc (0001067983) (Filer)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/1067983/000106798326000003/0001067983-26-000003-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0001067983-26-000003</id>
+    <updated>2026-10-28T15:30:00-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0001067983-26-000003 Size: 100 KB</summary>
+  </entry>
+
+  <entry>
+    <title>8-K/A - Microsoft Corp (0000789019) (Filer)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/789019/000078901926000004/0000789019-26-000004-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0000789019-26-000004</id>
+    <updated>2026-10-28T15:20:00-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0000789019-26-000004 Size: 25 KB</summary>
+  </entry>
+
+  <!-- Not watched: should be filtered out -->
+  <entry>
+    <title>10-Q - Apple Inc. (0000320193) (Filer)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/320193/000032019326000099/0000320193-26-000099-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0000320193-26-000099</id>
+    <updated>2026-10-28T15:10:00-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0000320193-26-000099 Size: 200 KB</summary>
+  </entry>
+
+  <entry>
+    <title>3 - Random Person (0001111111) (Reporting)</title>
+    <link rel="alternate" type="text/html" href="https://www.sec.gov/Archives/edgar/data/1111111/000111111126000001/0001111111-26-000001-index.htm"/>
+    <id>urn:tag:sec.gov,2008:accession-number=0001111111-26-000001</id>
+    <updated>2026-10-28T15:05:00-04:00</updated>
+    <summary type="html">Filed on 2026-10-28 Acc-no: 0001111111-26-000001 Size: 5 KB</summary>
+  </entry>
+</feed>
