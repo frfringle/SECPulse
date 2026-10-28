@@ -103,7 +103,7 @@ class SC13DExtraction(SQLModel, table=True):
 
 
 class Alert(SQLModel, table=True):
-    """Persisted alert from Ollama score or Form 4 rule."""
+    """Persisted alert from Ollama score or Form 4 rule (+ Stage 5 prices)."""
 
     __tablename__ = "alerts"
 
@@ -121,6 +121,15 @@ class Alert(SQLModel, table=True):
     # "ollama" | "form4_rule"
     source: str = Field(default="ollama", index=True, max_length=32)
     created_at: datetime = Field(default_factory=_utcnow)
+    # Stage 5 — price enrichment (nullable if yfinance fails)
+    latency_seconds: Optional[float] = Field(default=None)
+    price_at_alert: Optional[float] = Field(default=None)
+    price_at_accepted: Optional[float] = Field(default=None)
+    pct_change_since_accepted: Optional[float] = Field(default=None)
+    market_cap: Optional[float] = Field(default=None)
+    market_cap_bucket: Optional[str] = Field(default=None, max_length=16)
+    no_press_release: Optional[bool] = Field(default=None)
+    enrichment_error: Optional[str] = Field(default=None, max_length=512)
 
 
 class ScoringQueueItem(SQLModel, table=True):

@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SECPulse",
     version="0.1.0",
-    description="Personal SEC EDGAR alert dashboard (Stage 4: Ollama scoring)",
+    description="Personal SEC EDGAR alert dashboard (Stage 5: price enrichment)",
     lifespan=lifespan,
 )
 
@@ -105,14 +105,14 @@ def health() -> JSONResponse:
         {
             "status": "ok",
             "service": "secpulse",
-            "stage": 4,
+            "stage": 5,
         }
     )
 
 
 @app.get("/api/alerts")
 def list_alerts() -> JSONResponse:
-    """Minimal alert list for Stage 4 storage verification (full API in Stage 6)."""
+    """Alert list including Stage 5 price enrichment (full API in Stage 6)."""
     from sqlmodel import select
 
     from backend.models import Alert
@@ -130,6 +130,13 @@ def list_alerts() -> JSONResponse:
                 "event_type": r.event_type,
                 "source": r.source,
                 "accession_number": r.accession_number,
+                "latency_seconds": r.latency_seconds,
+                "price_at_alert": r.price_at_alert,
+                "price_at_accepted": r.price_at_accepted,
+                "pct_change_since_accepted": r.pct_change_since_accepted,
+                "market_cap_bucket": r.market_cap_bucket,
+                "no_press_release": r.no_press_release,
+                "enrichment_error": r.enrichment_error,
             }
             for r in rows[:100]
         ]

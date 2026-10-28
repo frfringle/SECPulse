@@ -3,11 +3,40 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlmodel import Session, select
 
-from backend.models import Alert, Filing, ScoringQueueItem
+from backend.models import Alert, EightKExtraction, Filing, ScoringQueueItem
+from backend.prices.enrichment import enrich_alert_fields
+from backend.prices.yfinance_client import YFinanceClient
 from backend.scoring.schema import ScoringResult
+
+_yf_client: Optional[YFinanceClient] = None
+
+
+def get_yf_client() -> YFinanceClient:
+    global _yf_client
+    if _yf_client is None:
+        _yf_client = YFinanceClient()
+    return _yf_client
+
+
+def set_yf_client(client: Optional[YFinanceClient]) -> None:
+    """Test hook to inject a mocked YFinanceClient."""
+    global _yf_client
+    _yf_client = client
+
+
+def _lookup_no_press_release(session: Session, filing: Filing) -> Optional[bool]:
+    if filing.form_type not in {"8-K", "8-K/A"}:
+        return None
+    row = session.exec(
+        select(EightKExtraction).where(EightKExtraction.filing_id == filing.id)
+    ).first()
+    if row is None:
+        return None
+    return bool(row.no_press_release)
 
 
 def create_alert(
@@ -16,7 +45,17 @@ def create_alert(
     filing: Filing,
     result: ScoringResult,
     source: str,
+    yf_client: Optional[YFinanceClient] = None,
 ) -> Alert:
+    no_pr = _lookup_no_press_release(session, filing)
+    enrichment = enrich_alert_fields(
+        ticker=filing.ticker,
+        accepted_at=filing.accepted_at,
+        alert_at=datetime.now(timezone.utc),
+        no_press_release=no_pr,
+        client=yf_client or get_yf_client(),
+    )
+
     alert = Alert(
         filing_id=filing.id,  # type: ignore[arg-type]
         accession_number=filing.accession_number,
@@ -29,6 +68,14 @@ def create_alert(
         key_evidence=result.key_evidence,
         event_type=result.event_type,
         source=source,
+        latency_seconds=enrichment.latency_seconds,
+        price_at_alert=enrichment.price_at_alert,
+        price_at_accepted=enrichment.price_at_accepted,
+        pct_change_since_accepted=enrichment.pct_change_since_accepted,
+        market_cap=enrichment.market_cap,
+        market_cap_bucket=enrichment.market_cap_bucket,
+        no_press_release=enrichment.no_press_release,
+        enrichment_error=enrichment.enrichment_error,
     )
     session.add(alert)
     return alert
