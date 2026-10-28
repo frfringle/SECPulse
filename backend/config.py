@@ -48,6 +48,8 @@ class Settings(BaseSettings):
     ticker_cache_path: Path = Field(
         default=PROJECT_ROOT / "data" / "ticker_cache.json",
     )
+    # Approx token budget for combined 8-K / 13D text fed to Ollama later
+    token_budget: int = Field(default=4000, alias="TOKEN_BUDGET")
 
     @field_validator("sec_user_agent")
     @classmethod

@@ -28,6 +28,10 @@ class Filing(SQLModel, table=True):
     ingested_at: datetime = Field(default_factory=_utcnow)
     # Stage 2: Form 4 parse status (None = not Form 4 / not attempted)
     form4_parsed: Optional[bool] = Field(default=None)
+    # Stage 3: 8-K / 13D extraction status
+    content_parsed: Optional[bool] = Field(default=None)
+    queue_priority: Optional[int] = Field(default=None, index=True)
+    queue_reason: Optional[str] = Field(default=None, max_length=128)
 
 
 class Form4TransactionRow(SQLModel, table=True):
@@ -54,4 +58,40 @@ class Form4TransactionRow(SQLModel, table=True):
     # Open-market buy (P) by officer/director — bypasses LLM scoring later
     alert_by_rule: bool = Field(default=False, index=True)
     skip_reason: Optional[str] = Field(default=None, max_length=64)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class EightKExtraction(SQLModel, table=True):
+    """Extracted 8-K items + Exhibit 99.1 / no-press-release flag."""
+
+    __tablename__ = "eightk_extractions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    filing_id: int = Field(index=True, foreign_key="filings.id")
+    accession_number: str = Field(index=True, max_length=32)
+    ticker: str = Field(default="", index=True, max_length=16)
+    item_numbers: str = Field(default="", max_length=256)  # comma-separated
+    high_priority_items: str = Field(default="", max_length=256)
+    has_exhibit_99_1: bool = Field(default=False)
+    no_press_release: bool = Field(default=True)
+    items_json: str = Field(default="")  # JSON list of {number,title,text}
+    combined_text: str = Field(default="")
+    truncated: bool = Field(default=False)
+    created_at: datetime = Field(default_factory=_utcnow)
+
+
+class SC13DExtraction(SQLModel, table=True):
+    """Extracted SC 13D filer, stake %, and Item 4 purpose text."""
+
+    __tablename__ = "sc13d_extractions"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    filing_id: int = Field(index=True, foreign_key="filings.id")
+    accession_number: str = Field(index=True, max_length=32)
+    ticker: str = Field(default="", index=True, max_length=16)
+    filer_name: str = Field(default="", max_length=512)
+    stake_percent: Optional[float] = Field(default=None)
+    item4_text: str = Field(default="")
+    combined_text: str = Field(default="")
+    truncated: bool = Field(default=False)
     created_at: datetime = Field(default_factory=_utcnow)

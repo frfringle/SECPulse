@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 from datetime import datetime, timezone
+from typing import Optional
 
 from sqlmodel import Session, select
 
@@ -13,13 +14,14 @@ from backend.sec.atom import ParsedFiling, parse_atom_feed
 from backend.sec.client import SecClient
 from backend.sec.form4 import parse_form4_xml
 from backend.sec.form4_fetch import fetch_form4_xml
+from backend.sec.processor import FilingProcessor, form4_has_alert
 from backend.sec.ticker_cache import TickerCache
 
 logger = logging.getLogger(__name__)
 
 
 class FilingPoller:
-    """Fetch Atom feed, filter/map, and insert unseen filings."""
+    """Fetch Atom feed, filter/map, insert filings, enqueue Stage 3 work."""
 
     def __init__(
         self,
@@ -27,11 +29,15 @@ class FilingPoller:
         client: SecClient,
         ticker_cache: TickerCache,
         session_factory,
+        processor: Optional[FilingProcessor] = None,
     ) -> None:
         self.settings = settings
         self.client = client
         self.ticker_cache = ticker_cache
         self.session_factory = session_factory
+        self.processor = processor or FilingProcessor(
+            settings, client, session_factory
+        )
 
     def poll_once(self) -> int:
         """Run one poll cycle. Returns number of newly stored filings."""
@@ -57,10 +63,19 @@ class FilingPoller:
                     inserted += 1
             session.commit()
 
+        # Process queued 8-K / 13D / Form 4 jobs (high priority first)
+        try:
+            processed = self.processor.process_available()
+            if processed:
+                logger.info("Processed %s queued filing job(s)", processed)
+        except Exception as exc:  # noqa: BLE001
+            logger.error("Queue processing error: %s", exc)
+
         logger.info(
-            "Atom poll complete parsed=%s inserted=%s",
+            "Atom poll complete parsed=%s inserted=%s queue_remaining=%s",
             len(parsed),
             inserted,
+            len(self.processor.queue),
         )
         return inserted
 
@@ -97,12 +112,22 @@ class FilingPoller:
             filing_url=item.filing_url,
             ingested_at=datetime.now(timezone.utc),
             form4_parsed=None,
+            content_parsed=None,
         )
         session.add(filing)
         session.flush()  # assign filing.id
 
+        form4_alert = False
         if item.form_type == "4":
             self._parse_and_store_form4(session, filing)
+            form4_alert = form4_has_alert(session, filing.id or 0)
+
+        # Enqueue for Stage 3 processing (Form 4 alert / 8-K / SC 13D)
+        if item.form_type in {"4", "8-K", "8-K/A", "SC 13D", "SC 13D/A"}:
+            # Only queue Form 4 when it has an open-market buy alert path,
+            # or always queue 8-K / 13D.
+            if item.form_type != "4" or form4_alert:
+                self.processor.enqueue_filing(filing, form4_alert=form4_alert)
 
         logger.info(
             "Stored filing accession=%s form=%s ticker=%s company=%s",

@@ -1,7 +1,7 @@
 # SECPulse
 
 Personal SEC EDGAR alert dashboard: poll filings → score with local Ollama → live feed.  
-**Current stage: 2 — ingestion + Form 4 XML parser (no LLM).**
+**Current stage: 3 — ingestion + Form 4 + 8-K / SC 13D extraction (no LLM scoring yet).**
 
 ## Requirements
 
@@ -37,6 +37,7 @@ python -m backend.main
 - Dedupes by accession number; skips filings with no CIK→ticker mapping
 - Rate-limits SEC requests to 8/sec with backoff on 403/429
 - **Form 4:** downloads ownership XML, extracts insider/role/code/shares/price/value; open-market buys (`P`) by officers/directors are stored with `alert_by_rule=true` (grants + 10b5-1 sales ignored for that path)
+- **8-K / SC 13D:** priority queue (Form 4 buys → SC 13D → high-priority 8-K items `1.01,1.03,2.01,2.05,2.06,3.01,4.01,4.02,5.02`); item text + Exhibit 99.1 or `no press release`; SC 13D filer / stake % / Item 4; text truncated to `TOKEN_BUDGET`
 
 ## Tests
 

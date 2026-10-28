@@ -14,6 +14,7 @@ from backend.db import init_db, session_scope
 from backend.logging_config import configure_logging
 from backend.sec.client import SecClient
 from backend.sec.poller import FilingPoller
+from backend.sec.processor import FilingProcessor
 from backend.sec.rate_limiter import RateLimiter
 from backend.sec.ticker_cache import TickerCache
 
@@ -22,11 +23,12 @@ logger = logging.getLogger(__name__)
 _scheduler: BackgroundScheduler | None = None
 _client: SecClient | None = None
 _poller: FilingPoller | None = None
+_processor: FilingProcessor | None = None
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _scheduler, _client, _poller
+    global _scheduler, _client, _poller, _processor
 
     settings = require_settings()
     configure_logging(settings.log_level)
@@ -44,11 +46,17 @@ async def lifespan(app: FastAPI):
     except Exception as exc:  # noqa: BLE001
         logger.error("Initial ticker cache load failed (continuing): %s", exc)
 
+    _processor = FilingProcessor(
+        settings=settings,
+        client=_client,
+        session_factory=session_scope,
+    )
     _poller = FilingPoller(
         settings=settings,
         client=_client,
         ticker_cache=ticker_cache,
         session_factory=session_scope,
+        processor=_processor,
     )
 
     _scheduler = BackgroundScheduler()
@@ -86,7 +94,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(
     title="SECPulse",
     version="0.1.0",
-    description="Personal SEC EDGAR alert dashboard (Stage 2: Form 4 parser)",
+    description="Personal SEC EDGAR alert dashboard (Stage 3: 8-K / SC 13D)",
     lifespan=lifespan,
 )
 
@@ -97,18 +105,18 @@ def health() -> JSONResponse:
         {
             "status": "ok",
             "service": "secpulse",
-            "stage": 2,
+            "stage": 3,
         }
     )
 
 
 @app.get("/api/alerts")
 def alerts_stub() -> JSONResponse:
-    """Stub — full alert API lands in Stage 6; Form 4 rule hits are in DB now."""
+    """Stub — full alert API lands in Stage 6."""
     return JSONResponse(
         {
             "alerts": [],
-            "detail": "Alert API not implemented yet; Form 4 alert_by_rule rows are stored",
+            "detail": "Alert API not implemented yet; extractions stored in DB",
         }
     )
 
