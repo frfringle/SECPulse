@@ -64,6 +64,26 @@ See `.env.example`:
 - `GET /api/tickers/{ticker}`
 - `GET /api/stream` — SSE `event: alert`
 
+## Static / Netlify UI (optional)
+
+Netlify can host the **React SPA only**. The FastAPI backend (SEC poller, SSE, scoring) must run elsewhere.
+
+```bash
+cd frontend
+# Point the build at your public API (no trailing slash)
+export VITE_API_URL=https://your-api.example.com
+npm run build          # → frontend/dist
+# Deploy dist with Netlify CLI or connect the frontend/ folder as the site root
+```
+
+On the API host, allow the Netlify origin:
+
+```bash
+export CORS_ORIGINS=https://your-site.netlify.app
+```
+
+Full steps: see `docs/netlify-deploy.md` in the project agent store, or `frontend/netlify.toml`.
+
 ## Tests
 
 ```bash

@@ -9,6 +9,7 @@ from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
@@ -173,6 +174,21 @@ def create_app(*, start_background: bool | None = None) -> FastAPI:
         description="Personal SEC EDGAR alert dashboard (Stage 7: frontend)",
         lifespan=lifespan,
     )
+    # Optional: allow a Netlify (or other) static UI to call this API cross-origin.
+    # CORS_ORIGINS="https://your-site.netlify.app,http://localhost:5173"
+    cors_origins = [
+        o.strip()
+        for o in os.environ.get("CORS_ORIGINS", "").split(",")
+        if o.strip()
+    ]
+    if cors_origins:
+        application.add_middleware(
+            CORSMiddleware,
+            allow_origins=cors_origins,
+            allow_credentials=True,
+            allow_methods=["*"],
+            allow_headers=["*"],
+        )
     application.include_router(api_router)
     if os.environ.get("SECPULSE_SKIP_FRONTEND", "").lower() not in {
         "1",

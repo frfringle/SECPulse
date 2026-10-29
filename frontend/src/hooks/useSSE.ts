@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react'
+import { apiUrl } from '../api'
 import type { Alert } from '../types'
 
 type Handlers = {
@@ -10,7 +11,7 @@ export function useSSE({ onAlert }: Handlers) {
   handler.current = onAlert
 
   useEffect(() => {
-    const es = new EventSource('/api/stream')
+    const es = new EventSource(apiUrl('/api/stream'))
     const onMessage = (ev: MessageEvent) => {
       try {
         const data = JSON.parse(ev.data) as Alert
