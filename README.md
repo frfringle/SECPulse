@@ -55,14 +55,27 @@ See `.env.example`:
 5. **Prices** — yfinance (60s cache): latency, % since accepted, market-cap bucket  
 6. **API** — alerts filters, ticker + history, SSE `/api/stream`, health  
 7. **UI** — live feed, ticker chart, drawer, filters, watchlist, notify/sound  
+8. **Patents (optional)** — USPTO ODP poll when `USPTO_API_KEY` is set; grants alert, apps stay quiet  
 
 ## API
 
 - `GET /api/health`
 - `GET /api/alerts` — `ticker`, `direction`, `form_type`, `min_confidence`, `market_cap_bucket`
 - `GET /api/alerts/{id}`
+- `GET /api/filings/non-alerts`
+- `GET /api/patents` — `ticker`, `event_type`, `actionable`
 - `GET /api/tickers/{ticker}`
 - `GET /api/stream` — SSE `event: alert`
+
+### USPTO key
+
+```bash
+# https://data.uspto.gov/apis — free ODP API key
+export USPTO_API_KEY=your_key_here
+# optional: USPTO_POLL_INTERVAL_SECONDS=600
+```
+
+Without the key, EDGAR keeps running and patent poller stays off. Assignee→ticker aliases live in `data/assignee_aliases.json`.
 
 ## Static / Netlify UI (optional)
 
