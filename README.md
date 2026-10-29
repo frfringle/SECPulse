@@ -100,19 +100,22 @@ export CORS_ORIGINS=https://your-site.netlify.app
 
 Full steps: see `docs/netlify-deploy.md` in the project agent store, or `frontend/netlify.toml`.
 
-## Railway API (durable backend)
+## Durable API (Railway or Render)
 
-Ship the FastAPI poller with Docker:
+Ship the FastAPI poller with Docker. Persist SQLite on a volume/disk at **`/data`**.
 
 ```bash
-# Required service env on Railway:
+# Required service env:
 #   SEC_USER_AGENT="Name email@example.com"
 #   CORS_ORIGINS="https://secpulse-ui.netlify.app"
 #   DATABASE_URL="sqlite:////data/secpulse.db"
-# Attach a volume mounted at /data (SQLite persistence).
+#   PORT is injected by the host; app reads PORT
 ```
 
-Repo files: `Dockerfile`, `railway.toml`, `Procfile`. Step-by-step: [`docs/railway-deploy.md`](docs/railway-deploy.md).
+| Host | Config | Guide |
+|------|--------|-------|
+| Railway | `Dockerfile`, `railway.toml`, `Procfile` | [`docs/railway-deploy.md`](docs/railway-deploy.md) |
+| Render | `Dockerfile`, `render.yaml` (disk `/data`) | [`docs/render-deploy.md`](docs/render-deploy.md) |
 
 ```bash
 docker build -t secpulse .

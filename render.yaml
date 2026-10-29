@@ -1,0 +1,36 @@
+# Render Blueprint — SECPulse FastAPI backend
+# Dashboard: New → Blueprint → connect frfringle/SECPulse
+# https://render.com/docs/infrastructure-as-code
+#
+# Persistent disk at /data keeps SQLite across deploys.
+# Set SEC_USER_AGENT (and CORS_ORIGINS for Netlify) in the dashboard prompts.
+
+services:
+  - type: web
+    name: secpulse-api
+    runtime: docker
+    plan: starter
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /api/health
+    # Render injects PORT; backend.main reads it.
+    disk:
+      name: secpulse-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: SEC_USER_AGENT
+        sync: false
+      - key: CORS_ORIGINS
+        sync: false
+      - key: PORT
+        value: "8000"
+      - key: DATABASE_URL
+        value: sqlite:////data/secpulse.db
+      - key: POLL_INTERVAL_SECONDS
+        value: "30"
+      - key: LOG_LEVEL
+        value: INFO
+      # Optional — leave unset in dashboard if unused
+      - key: USPTO_API_KEY
+        sync: false

@@ -5,45 +5,50 @@
 | Goal | What it is | What you need |
 |------|------------|---------------|
 | **Push to GitHub** | Source code on `frfringle/SECPulse` + PR | `gh auth` / device login |
-| **Durable public API** | FastAPI (poller, SSE, SQLite) reachable 24/7 for Netlify | Railway / Fly / Render / VPS — **not** Netlify |
+| **Durable public API** | FastAPI (poller, SSE, SQLite) reachable 24/7 for Netlify | Railway / Render / Fly / VPS — **not** Netlify |
 
 Netlify only serves the static SPA. Cloudflare `*.trycloudflare.com` tunnels from a Cloud Agent VM are demo-only and die when the VM stops.
 
-## Recommended: Railway
-
-This repo is Railway-ready:
+## Option A — Railway
 
 | File | Role |
 |------|------|
 | `Dockerfile` | Multi-stage: build SPA + Python 3.12 runtime |
-| `railway.toml` | Docker builder, `/api/health` check, restart policy |
+| `railway.toml` | Docker builder, `/api/health` check |
 | `Procfile` | `web: python -m backend.main` |
 | `docs/railway-deploy.md` | Full checklist |
 
-### Minimum env
+Mount a volume at **`/data`**. Env: `SEC_USER_AGENT`, `CORS_ORIGINS`, `PORT` (auto), `DATABASE_URL=sqlite:////data/secpulse.db`.
+
+## Option B — Render
+
+| File | Role |
+|------|------|
+| `Dockerfile` | Same image as Railway |
+| `render.yaml` | Blueprint: Docker web service + disk at `/data` |
+| `docs/render-deploy.md` | Dashboard Blueprint steps |
+
+1. Render Dashboard → **New** → **Blueprint** → `frfringle/SECPulse`  
+2. Set `SEC_USER_AGENT` (+ `CORS_ORIGINS` for Netlify) when prompted  
+3. Disk **`/data`** is declared in `render.yaml`  
+4. Point Netlify `VITE_API_URL` at `https://….onrender.com`
+
+## Shared minimum env
 
 ```bash
 SEC_USER_AGENT="Your Name you@example.com"
-PORT=8080                          # Railway sets automatically; app reads PORT
+PORT=8000                          # platform usually injects PORT; app reads it
 CORS_ORIGINS="https://secpulse-ui.netlify.app"
 DATABASE_URL="sqlite:////data/secpulse.db"
 ```
 
-### Volume (required for SQLite)
+## After either host is live
 
-Mount a Railway volume at **`/data`**. Without it, alerts and filings reset on every redeploy.
-
-### After deploy
-
-1. Copy the Railway HTTPS URL  
-2. Rebuild Netlify with `VITE_API_URL=https://YOUR-SERVICE.up.railway.app`  
+1. Copy the public HTTPS URL  
+2. Rebuild Netlify with `VITE_API_URL=https://your-api.example.com`  
 3. Confirm `GET /api/health` → `"status":"ok"`
 
-CLI: `railway login` (browser/device URL — never invent tokens) → link repo → `railway up`. Details in `docs/railway-deploy.md`.
-
-## Other hosts
-
-Same Docker image works on Fly.io / Render / any container host. Set `PORT`, `SEC_USER_AGENT`, `CORS_ORIGINS`, and a persistent disk for SQLite (or switch `DATABASE_URL` to Postgres later).
+Never invent platform API tokens in agents — use the dashboard or a local CLI login.
 
 ## Tunnel fallback (demos only)
 
