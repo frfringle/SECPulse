@@ -24,7 +24,9 @@ export async function fetchHealth(): Promise<Health> {
   return r.json()
 }
 
-export async function fetchAlerts(filters: Partial<AlertFilters> = {}): Promise<Alert[]> {
+export async function fetchAlerts(
+  filters: Partial<AlertFilters> & { limit?: number } = {},
+): Promise<Alert[]> {
   const r = await fetch(
     apiUrl(
       `/api/alerts${qs({
@@ -32,7 +34,8 @@ export async function fetchAlerts(filters: Partial<AlertFilters> = {}): Promise<
         form_type: filters.form_type,
         min_confidence: filters.min_confidence,
         market_cap_bucket: filters.market_cap_bucket,
-        limit: 100,
+        // Home seed: last N by created_at desc (API default order)
+        limit: filters.limit ?? 5,
       })}`,
     ),
   )

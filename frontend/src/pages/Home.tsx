@@ -49,14 +49,31 @@ export function Home() {
 
   const load = useCallback(async () => {
     try {
-      const [a, h] = await Promise.all([fetchAlerts(apiFilters), fetchHealth()])
+      // Seed with the 5 most recent alerts; SSE prepends newer ones (deduped by id).
+      // small/mid is a client-only multi-bucket filter — over-fetch then trim to 5.
+      const overFetch = filters.market_cap_bucket === 'small,mid'
+      const [raw, h] = await Promise.all([
+        fetchAlerts({ ...apiFilters, limit: overFetch ? 40 : 5 }),
+        fetchHealth(),
+      ])
+      let a = raw
+      if (overFetch) {
+        a = raw
+          .filter(
+            (x) =>
+              !x.market_cap_bucket ||
+              x.market_cap_bucket === 'small' ||
+              x.market_cap_bucket === 'mid',
+          )
+          .slice(0, 5)
+      }
       setAlerts(a)
       setHealth(h)
       setError(null)
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to load')
     }
-  }, [apiFilters])
+  }, [apiFilters, filters.market_cap_bucket])
 
   useEffect(() => {
     void load()
@@ -100,6 +117,8 @@ export function Home() {
     if (watchlistOnly) {
       rows = rows.filter((a) => watchlist.includes(a.ticker))
     }
+    // Keep the feed focused: initial seed is 5; live SSE can grow beyond that.
+    // Cap display of the historical seed+stream to a reasonable window.
     return rows
   }, [alerts, filters.market_cap_bucket, watchlistOnly, watchlist])
 
@@ -120,7 +139,8 @@ export function Home() {
               Live feed
             </h1>
             <p className="text-sm text-mist">
-              New alerts slide in at the top as EDGAR filings clear the bar.
+              Shows the 5 most recent alerts on load; new ones slide in live via
+              SSE.
             </p>
           </div>
           <Filters
