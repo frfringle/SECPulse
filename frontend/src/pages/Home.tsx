@@ -1,15 +1,28 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchAlerts, fetchHealth, fetchNonAlertFilings } from '../api'
+import {
+  fetchAlerts,
+  fetchHealth,
+  fetchNonAlertFilings,
+  fetchPatents,
+} from '../api'
 import { AlertDrawer } from '../components/AlertDrawer'
 import { AlertRow } from '../components/AlertRow'
 import { Filters } from '../components/Filters'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
+import { PatentDrawer } from '../components/PatentDrawer'
+import { PatentRow } from '../components/PatentRow'
 import { QuietFilingRow } from '../components/QuietFilingRow'
 import { useNotify } from '../hooks/useNotify'
 import { useSSE } from '../hooks/useSSE'
 import { useWatchlist } from '../hooks/useWatchlist'
-import type { Alert, AlertFilters, Health, QuietFiling } from '../types'
+import type {
+  Alert,
+  AlertFilters,
+  Health,
+  PatentEvent,
+  QuietRow,
+} from '../types'
 
 const DEFAULT_FILTERS: AlertFilters = {
   direction: 'all',
@@ -18,12 +31,25 @@ const DEFAULT_FILTERS: AlertFilters = {
   market_cap_bucket: 'small,mid',
 }
 
+type FeedItem =
+  | { kind: 'alert'; sortAt: number; alert: Alert }
+  | { kind: 'patent'; sortAt: number; patent: PatentEvent }
+
+function ts(iso: string | null | undefined): number {
+  if (!iso) return 0
+  const n = new Date(iso).getTime()
+  return Number.isNaN(n) ? 0 : n
+}
+
 export function Home() {
   const [filters, setFilters] = useState<AlertFilters>(DEFAULT_FILTERS)
   const [alerts, setAlerts] = useState<Alert[]>([])
-  const [quietFilings, setQuietFilings] = useState<QuietFiling[]>([])
+  const [patents, setPatents] = useState<PatentEvent[]>([])
+  const [quietRows, setQuietRows] = useState<QuietRow[]>([])
   const [freshIds, setFreshIds] = useState<Set<number>>(new Set())
+  const [freshPatentIds, setFreshPatentIds] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<Alert | null>(null)
+  const [selectedPatent, setSelectedPatent] = useState<PatentEvent | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
   const [watchlistOnly, setWatchlistOnly] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -32,7 +58,6 @@ export function Home() {
 
   const apiFilters = useMemo(() => {
     const bucket = filters.market_cap_bucket
-    // API takes a single bucket; multi default filtered client-side
     if (bucket === 'small,mid' || bucket === 'all') {
       return {
         direction: filters.direction,
@@ -51,13 +76,13 @@ export function Home() {
 
   const load = useCallback(async () => {
     try {
-      // Seed with the 5 most recent alerts; SSE prepends newer ones (deduped by id).
-      // small/mid is a client-only multi-bucket filter — over-fetch then trim to 5.
       const overFetch = filters.market_cap_bucket === 'small,mid'
-      const [raw, h, quiet] = await Promise.all([
+      const [raw, h, quiet, actionablePatents, quietPatents] = await Promise.all([
         fetchAlerts({ ...apiFilters, limit: overFetch ? 40 : 5 }),
         fetchHealth(),
         fetchNonAlertFilings(20),
+        fetchPatents({ actionable: true, limit: 20 }),
+        fetchPatents({ actionable: false, limit: 20 }),
       ])
       let a = raw
       if (overFetch) {
@@ -71,7 +96,28 @@ export function Home() {
           .slice(0, 5)
       }
       setAlerts(a)
-      setQuietFilings(quiet)
+      setPatents(actionablePatents)
+      const edgarQuiet: QuietRow[] = quiet.map((f) => ({ ...f, kind: 'edgar' as const }))
+      const patentQuiet: QuietRow[] = quietPatents.map((p) => ({
+        ...p,
+        kind: 'patent' as const,
+      }))
+      const mergedQuiet = [...patentQuiet, ...edgarQuiet].sort(
+        (x, y) =>
+          ts(
+            x.kind === 'patent'
+              ? x.event_at || x.created_at
+              : x.accepted_at || x.ingested_at,
+          ) <
+          ts(
+            y.kind === 'patent'
+              ? y.event_at || y.created_at
+              : y.accepted_at || y.ingested_at,
+          )
+            ? 1
+            : -1,
+      )
+      setQuietRows(mergedQuiet)
       setHealth(h)
       setError(null)
     } catch (e) {
@@ -108,10 +154,44 @@ export function Home() {
     },
   })
 
-  const visible = useMemo(() => {
-    let rows = alerts
+  // Periodically refresh patents (no SSE for USPTO in v1)
+  useEffect(() => {
+    const id = setInterval(() => {
+      void fetchPatents({ actionable: true, limit: 20 })
+        .then((rows) => {
+          setPatents((prev) => {
+            const known = new Set(prev.map((p) => p.id))
+            const fresh = rows.filter((r) => !known.has(r.id))
+            if (fresh.length) {
+              setFreshPatentIds((s) => {
+                const n = new Set(s)
+                fresh.forEach((f) => n.add(f.id))
+                return n
+              })
+              setTimeout(() => {
+                setFreshPatentIds((s) => {
+                  const n = new Set(s)
+                  fresh.forEach((f) => n.delete(f.id))
+                  return n
+                })
+              }, 1200)
+            }
+            const byId = new Map<number, PatentEvent>()
+            ;[...fresh, ...prev, ...rows].forEach((p) => byId.set(p.id, p))
+            return [...byId.values()].sort(
+              (a, b) => ts(b.event_at || b.created_at) - ts(a.event_at || a.created_at),
+            )
+          })
+        })
+        .catch(() => undefined)
+    }, 60000)
+    return () => clearInterval(id)
+  }, [])
+
+  const feed = useMemo(() => {
+    let alertRows = alerts
     if (filters.market_cap_bucket === 'small,mid') {
-      rows = rows.filter(
+      alertRows = alertRows.filter(
         (a) =>
           !a.market_cap_bucket ||
           a.market_cap_bucket === 'small' ||
@@ -119,12 +199,26 @@ export function Home() {
       )
     }
     if (watchlistOnly) {
-      rows = rows.filter((a) => watchlist.includes(a.ticker))
+      alertRows = alertRows.filter((a) => watchlist.includes(a.ticker))
     }
-    // Keep the feed focused: initial seed is 5; live SSE can grow beyond that.
-    // Cap display of the historical seed+stream to a reasonable window.
-    return rows
-  }, [alerts, filters.market_cap_bucket, watchlistOnly, watchlist])
+    let patentRows = patents
+    if (watchlistOnly) {
+      patentRows = patentRows.filter((p) => watchlist.includes(p.ticker))
+    }
+    const items: FeedItem[] = [
+      ...alertRows.map((alert) => ({
+        kind: 'alert' as const,
+        sortAt: ts(alert.created_at),
+        alert,
+      })),
+      ...patentRows.map((patent) => ({
+        kind: 'patent' as const,
+        sortAt: ts(patent.event_at || patent.created_at),
+        patent,
+      })),
+    ]
+    return items.sort((a, b) => b.sortAt - a.sortAt)
+  }, [alerts, patents, filters.market_cap_bucket, watchlistOnly, watchlist])
 
   return (
     <div className="flex min-h-screen flex-col">
@@ -143,8 +237,8 @@ export function Home() {
               Live feed
             </h1>
             <p className="text-sm text-mist">
-              Shows the 5 most recent alerts on load; new ones slide in live via
-              SSE.
+              Recent EDGAR alerts plus USPTO patent grants; new SEC alerts slide
+              in via SSE.
             </p>
           </div>
           <Filters
@@ -162,21 +256,32 @@ export function Home() {
         ) : null}
 
         <section className="mt-2">
-          {visible.length === 0 ? (
+          {feed.length === 0 ? (
             <p className="animate-fade-up py-12 text-center text-mist">
               No alerts match these filters yet.
             </p>
           ) : (
-            visible.map((alert) => (
-              <AlertRow
-                key={alert.id}
-                alert={alert}
-                fresh={freshIds.has(alert.id)}
-                watched={has(alert.ticker)}
-                onOpen={setSelected}
-                onToggleWatch={toggle}
-              />
-            ))
+            feed.map((item) =>
+              item.kind === 'alert' ? (
+                <AlertRow
+                  key={`a-${item.alert.id}`}
+                  alert={item.alert}
+                  fresh={freshIds.has(item.alert.id)}
+                  watched={has(item.alert.ticker)}
+                  onOpen={setSelected}
+                  onToggleWatch={toggle}
+                />
+              ) : (
+                <PatentRow
+                  key={`p-${item.patent.id}`}
+                  patent={item.patent}
+                  fresh={freshPatentIds.has(item.patent.id)}
+                  watched={has(item.patent.ticker)}
+                  onOpen={setSelectedPatent}
+                  onToggleWatch={toggle}
+                />
+              ),
+            )
           )}
         </section>
 
@@ -186,18 +291,21 @@ export function Home() {
               Seen, not alerted
             </h2>
             <p className="text-xs text-mist">
-              Recent EDGAR filings ingested here that did not clear the alert bar
-              (e.g. Form 4 without an officer/director open-market buy).
+              EDGAR filings and USPTO applications that were ingested but did not
+              clear the alert bar.
             </p>
           </div>
-          {quietFilings.length === 0 ? (
+          {quietRows.length === 0 ? (
             <p className="py-6 text-center text-sm text-mist/70">
               No quiet filings yet — poller may still be warming up.
             </p>
           ) : (
             <div className="rounded-md border border-line/50 bg-panel/30 px-2">
-              {quietFilings.map((f) => (
-                <QuietFilingRow key={f.id} filing={f} />
+              {quietRows.map((row) => (
+                <QuietFilingRow
+                  key={row.kind === 'patent' ? `qp-${row.id}` : `qe-${row.id}`}
+                  row={row}
+                />
               ))}
             </div>
           )}
@@ -206,6 +314,7 @@ export function Home() {
 
       <Footer />
       <AlertDrawer alert={selected} onClose={() => setSelected(null)} />
+      <PatentDrawer patent={selectedPatent} onClose={() => setSelectedPatent(null)} />
     </div>
   )
 }

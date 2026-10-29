@@ -3,11 +3,14 @@ import type { Health } from '../types'
 export function StatusDot({ health }: { health: Health | null }) {
   const ok = health?.status === 'ok' && !health.last_poll_error
   const ollama = health?.ollama_reachable
+  const uspto = health?.uspto_enabled
   const color = !health ? 'bg-mist' : ok ? 'bg-bull' : 'bg-bear'
   const label = !health
     ? 'Connecting…'
     : ok
-      ? `Live · queue ${health.queue_size}${ollama ? '' : ' · Ollama off'}`
+      ? `Live · queue ${health.queue_size}${ollama ? '' : ' · Ollama off'}${
+          uspto ? ' · USPTO on' : health?.uspto_configured ? ' · USPTO idle' : ''
+        }`
       : health.last_poll_error || 'Degraded'
 
   return (

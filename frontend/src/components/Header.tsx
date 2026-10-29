@@ -26,7 +26,8 @@ export function Header({
               SEC<span className="text-accent">Pulse</span>
             </p>
             <p className="mt-1 max-w-md text-sm text-mist">
-              Live EDGAR alerts — scored locally, never trading advice.
+              Live EDGAR + USPTO patent watch — scored locally, never trading
+              advice.
             </p>
           </Link>
         </div>

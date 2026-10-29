@@ -15,6 +15,7 @@ class AppState:
     last_poll_error: Optional[str] = None
     processor: Any = None
     poller: Any = None
+    patent_poller: Any = None
     ollama_client: Any = None
     settings: Any = None
     # Set False in tests to skip APScheduler / initial SEC poll

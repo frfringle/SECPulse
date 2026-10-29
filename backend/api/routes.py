@@ -9,11 +9,11 @@ from fastapi import APIRouter, HTTPException, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from sqlmodel import select
 
-from backend.api.serialize import alert_to_dict
+from backend.api.serialize import alert_to_dict, patent_to_dict
 from backend.api.sse import alert_bus
 from backend.api.state import app_state
 from backend.db import session_scope
-from backend.models import Alert, Filing, ScoringQueueItem
+from backend.models import Alert, Filing, PatentEvent, ScoringQueueItem
 from backend.prices.yfinance_client import market_cap_bucket
 from backend.scoring.alerts import get_yf_client
 from backend.scoring.ollama import OllamaClient
@@ -69,6 +69,9 @@ def _ollama_reachable() -> bool:
 @router.get("/api/health")
 def health() -> JSONResponse:
     last = app_state.last_poll_at
+    settings = app_state.settings
+    patent_poller = app_state.patent_poller
+    uspto_key = bool(getattr(settings, "uspto_api_key", None)) if settings else False
     return JSONResponse(
         {
             "status": "ok",
@@ -79,7 +82,17 @@ def health() -> JSONResponse:
             "last_poll_error": app_state.last_poll_error,
             "queue_size": _queue_size(),
             "ollama_reachable": _ollama_reachable(),
-            "ollama_model": getattr(app_state.settings, "ollama_model", None),
+            "ollama_model": getattr(settings, "ollama_model", None),
+            "uspto_enabled": uspto_key and patent_poller is not None,
+            "uspto_configured": uspto_key,
+            "last_patent_poll_at": (
+                patent_poller.last_poll_at.isoformat()
+                if patent_poller is not None and patent_poller.last_poll_at
+                else None
+            ),
+            "last_patent_poll_inserted": (
+                patent_poller.last_poll_inserted if patent_poller is not None else 0
+            ),
         }
     )
 
@@ -190,6 +203,28 @@ def list_non_alert_filings(
             for f in non
         ]
     return JSONResponse({"filings": payload, "count": len(payload)})
+
+
+@router.get("/api/patents")
+def list_patents(
+    ticker: Optional[str] = Query(None),
+    event_type: Optional[str] = Query(None),
+    actionable: Optional[bool] = Query(None),
+    limit: int = Query(50, ge=1, le=200),
+) -> JSONResponse:
+    """Recent USPTO patent events (grants / apps / status), optional filters."""
+    with session_scope() as session:
+        stmt = select(PatentEvent)
+        if ticker:
+            stmt = stmt.where(PatentEvent.ticker == ticker.strip().upper())
+        if event_type:
+            stmt = stmt.where(PatentEvent.event_type == event_type.strip().lower())
+        if actionable is not None:
+            stmt = stmt.where(PatentEvent.actionable == actionable)
+        stmt = stmt.order_by(PatentEvent.created_at.desc()).limit(limit)  # type: ignore[attr-defined]
+        rows = list(session.exec(stmt).all())
+        payload = [patent_to_dict(r) for r in rows]
+    return JSONResponse({"patents": payload, "count": len(payload)})
 
 
 def _fallback_history_from_alerts(alerts: list) -> list[dict]:

@@ -1,4 +1,11 @@
-import type { Alert, AlertFilters, Health, QuietFiling, TickerDetail } from './types'
+import type {
+  Alert,
+  AlertFilters,
+  Health,
+  PatentEvent,
+  QuietFiling,
+  TickerDetail,
+} from './types'
 
 /** Empty = same-origin (FastAPI SPA or Vite proxy). Set VITE_API_URL for Netlify → remote API. */
 export const API_BASE = String(import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -61,6 +68,25 @@ export async function fetchNonAlertFilings(limit = 20): Promise<QuietFiling[]> {
   if (!r.ok) throw new Error('non-alert filings failed')
   const data = await r.json()
   return data.filings ?? []
+}
+
+export async function fetchPatents(
+  opts: { ticker?: string; event_type?: string; actionable?: boolean; limit?: number } = {},
+): Promise<PatentEvent[]> {
+  const r = await fetch(
+    apiUrl(
+      `/api/patents${qs({
+        ticker: opts.ticker,
+        event_type: opts.event_type,
+        actionable:
+          opts.actionable === undefined ? undefined : opts.actionable ? 'true' : 'false',
+        limit: opts.limit ?? 50,
+      })}`,
+    ),
+  )
+  if (!r.ok) throw new Error('patents failed')
+  const data = await r.json()
+  return data.patents ?? []
 }
 
 export function filingUrl(accession: string, filingUrlHint?: string): string {

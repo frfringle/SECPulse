@@ -19,6 +19,9 @@ from backend.config import PROJECT_ROOT, require_settings
 from backend.db import init_db, session_scope
 from backend.logging_config import configure_logging
 from backend.scoring.ollama import OllamaClient
+from backend.patents.assignee_map import AssigneeMap
+from backend.patents.client import UsptoClient
+from backend.patents.poller import PatentPoller
 from backend.sec.client import SecClient
 from backend.sec.poller import FilingPoller
 from backend.sec.processor import FilingProcessor
@@ -32,6 +35,7 @@ FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 _scheduler: BackgroundScheduler | None = None
 _client: SecClient | None = None
 _ollama: OllamaClient | None = None
+_uspto: UsptoClient | None = None
 
 
 def _should_start_background() -> bool:
@@ -46,10 +50,13 @@ def _should_start_background() -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    global _scheduler, _client, _ollama
+    global _scheduler, _client, _ollama, _uspto
 
     settings = require_settings()
     configure_logging(settings.log_level)
+    # Ensure PatentEvent metadata is registered before create_all
+    import backend.models  # noqa: F401
+
     init_db(settings.database_url)
     app_state.settings = settings
     app_state.stage = 7
@@ -99,6 +106,44 @@ async def lifespan(app: FastAPI):
             max_instances=1,
             coalesce=True,
         )
+
+        # Patent watch — optional; EDGAR keeps running without USPTO_API_KEY
+        if settings.uspto_api_key:
+            try:
+                assignee_map = AssigneeMap(settings.assignee_alias_path)
+                assignee_map.load()
+                uspto_limiter = RateLimiter(settings.uspto_max_requests_per_second)
+                _uspto = UsptoClient(
+                    settings.uspto_api_key,
+                    rate_limiter=uspto_limiter,
+                    max_per_second=settings.uspto_max_requests_per_second,
+                )
+                patent_poller = PatentPoller(
+                    client=_uspto,
+                    assignee_map=assignee_map,
+                    session_factory=session_scope,
+                )
+                app_state.patent_poller = patent_poller
+                _scheduler.add_job(
+                    patent_poller.poll_once,
+                    trigger="interval",
+                    seconds=settings.uspto_poll_interval_seconds,
+                    id="uspto_patent_poll",
+                    max_instances=1,
+                    coalesce=True,
+                )
+                logger.info(
+                    "USPTO patent poller enabled interval=%ss",
+                    settings.uspto_poll_interval_seconds,
+                )
+            except Exception as exc:  # noqa: BLE001
+                logger.error("USPTO patent poller setup failed (EDGAR continues): %s", exc)
+        else:
+            logger.info(
+                "USPTO_API_KEY unset — patent poller disabled (EDGAR only). "
+                "Add USPTO_API_KEY from https://data.uspto.gov/apis to enable."
+            )
+
         _scheduler.start()
         logger.info(
             "Scheduler started poll_interval=%ss",
@@ -108,6 +153,11 @@ async def lifespan(app: FastAPI):
             poller.poll_once()
         except Exception as exc:  # noqa: BLE001
             logger.error("Initial poll failed (continuing): %s", exc)
+        if app_state.patent_poller is not None:
+            try:
+                app_state.patent_poller.poll_once()
+            except Exception as exc:  # noqa: BLE001
+                logger.error("Initial USPTO poll failed (continuing): %s", exc)
     else:
         logger.info("Background poller disabled (test / SECPULSE_DISABLE_BACKGROUND)")
 
@@ -119,11 +169,15 @@ async def lifespan(app: FastAPI):
     if _client is not None:
         _client.close()
         _client = None
+    if _uspto is not None:
+        _uspto.close()
+        _uspto = None
     if _ollama is not None:
         _ollama.close()
         _ollama = None
     app_state.processor = None
     app_state.poller = None
+    app_state.patent_poller = None
     app_state.ollama_client = None
     logger.info("SECPulse shutdown complete")
 

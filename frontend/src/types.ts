@@ -34,6 +34,28 @@ export interface Health {
   queue_size: number
   ollama_reachable: boolean
   ollama_model: string | null
+  uspto_enabled?: boolean
+  uspto_configured?: boolean
+  last_patent_poll_at?: string | null
+  last_patent_poll_inserted?: number
+}
+
+export interface PatentEvent {
+  id: number
+  application_number: string
+  patent_number: string | null
+  event_type: string
+  title: string
+  assignee: string
+  ticker: string
+  status_label: string | null
+  event_at: string | null
+  uspto_url: string
+  google_patents_url: string | null
+  actionable: boolean
+  reason: string
+  created_at: string | null
+  source: 'uspto'
 }
 
 export interface PricePoint {
@@ -79,4 +101,10 @@ export interface QuietFiling {
   score_status: string | null
   filing_url: string | null
   reason: string
+  kind?: 'edgar'
 }
+
+/** Quiet row that can be an EDGAR filing or a non-actionable patent. */
+export type QuietRow =
+  | (QuietFiling & { kind: 'edgar' })
+  | (PatentEvent & { kind: 'patent' })

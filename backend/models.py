@@ -151,3 +151,29 @@ class ScoringQueueItem(SQLModel, table=True):
     status: str = Field(default="pending", index=True, max_length=16)
     created_at: datetime = Field(default_factory=_utcnow)
     updated_at: datetime = Field(default_factory=_utcnow)
+
+
+class PatentEvent(SQLModel, table=True):
+    """USPTO Open Data Portal event (application publish, grant, status flip)."""
+
+    __tablename__ = "patent_events"
+
+    id: Optional[int] = Field(default=None, primary_key=True)
+    # Dedupe: application_number + event_type (+ patent_number when grant)
+    dedupe_key: str = Field(index=True, unique=True, max_length=128)
+    application_number: str = Field(index=True, max_length=32)
+    patent_number: Optional[str] = Field(default=None, index=True, max_length=32)
+    # application_published | grant | status_change
+    event_type: str = Field(index=True, max_length=32)
+    title: str = Field(default="", max_length=1024)
+    assignee: str = Field(default="", max_length=512)
+    ticker: str = Field(default="", index=True, max_length=16)
+    status_label: Optional[str] = Field(default=None, max_length=128)
+    event_at: Optional[datetime] = Field(default=None, index=True)
+    uspto_url: str = Field(default="", max_length=1024)
+    google_patents_url: Optional[str] = Field(default=None, max_length=1024)
+    # True → show on live feed with Patent badge; False → quiet / seen-not-alerted
+    actionable: bool = Field(default=False, index=True)
+    reason: str = Field(default="", max_length=256)
+    raw_json: str = Field(default="")
+    created_at: datetime = Field(default_factory=_utcnow)
