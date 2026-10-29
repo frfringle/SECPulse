@@ -43,8 +43,11 @@ See `.env.example`:
 | `OLLAMA_BASE_URL` | `http://localhost:11434` | Local only |
 | `OLLAMA_MODEL` | `qwen2.5:1.5b-instruct` | Pull with `ollama pull …` |
 | `ALERT_THRESHOLD` | `65` | Non-neutral + confidence ≥ threshold → alert |
+| `PORT` | `8000` | Listen port (Railway/Render inject `PORT`) |
+| `CORS_ORIGINS` | — | Comma-separated browser origins (e.g. Netlify URL) |
 | `SECPULSE_DISABLE_BACKGROUND` | — | Skip poller (tests) |
 | `SECPULSE_SKIP_FRONTEND` | — | API-only when using Vite |
+| `USPTO_API_KEY` | — | Optional USPTO ODP key for patent watch |
 
 ## What it does
 
@@ -96,6 +99,28 @@ export CORS_ORIGINS=https://your-site.netlify.app
 ```
 
 Full steps: see `docs/netlify-deploy.md` in the project agent store, or `frontend/netlify.toml`.
+
+## Railway API (durable backend)
+
+Ship the FastAPI poller with Docker:
+
+```bash
+# Required service env on Railway:
+#   SEC_USER_AGENT="Name email@example.com"
+#   CORS_ORIGINS="https://secpulse-ui.netlify.app"
+#   DATABASE_URL="sqlite:////data/secpulse.db"
+# Attach a volume mounted at /data (SQLite persistence).
+```
+
+Repo files: `Dockerfile`, `railway.toml`, `Procfile`. Step-by-step: [`docs/railway-deploy.md`](docs/railway-deploy.md).
+
+```bash
+docker build -t secpulse .
+docker run --rm -p 8000:8000 \
+  -e SEC_USER_AGENT="Your Name you@example.com" \
+  -v secpulse-data:/data \
+  secpulse
+```
 
 ## Tests
 
