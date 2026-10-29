@@ -35,3 +35,6 @@ data/ticker_cache.json
 # Frontend (later stages)
 node_modules/
 frontend/dist/
+
+# Local Netlify folder
+.netlify

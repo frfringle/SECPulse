@@ -81,3 +81,13 @@ Or connect the GitHub repo in the Netlify UI with:
 | Netlify CLI (`npx netlify`) | Available, not logged in |
 
 Provide a Netlify personal access token (or run `netlify login`) to publish and return a live URL.
+
+
+## Live deploy (this environment)
+
+- Site: https://secpulse-ui.netlify.app
+- Admin: https://app.netlify.com/projects/secpulse-ui
+- Site ID: `3b6bc8bd-d615-4036-8f28-624c9031f7aa`
+- API (Cloudflare quick tunnel → this VM `:8000`): `https://visiting-partner-already-morrison.trycloudflare.com`
+- Frontend rebuilt with `VITE_API_URL` pointing at that tunnel; API `CORS_ORIGINS` includes `https://secpulse-ui.netlify.app`
+- **Caveat:** trycloudflare URL is ephemeral — dies when the Cloud Agent / `cloudflared` / API process stops. For a durable setup, host FastAPI on Fly/Railway/Render and rebuild with a stable `VITE_API_URL`.
