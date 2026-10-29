@@ -1,14 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { fetchAlerts, fetchHealth } from '../api'
+import { fetchAlerts, fetchHealth, fetchNonAlertFilings } from '../api'
 import { AlertDrawer } from '../components/AlertDrawer'
 import { AlertRow } from '../components/AlertRow'
 import { Filters } from '../components/Filters'
 import { Footer } from '../components/Footer'
 import { Header } from '../components/Header'
+import { QuietFilingRow } from '../components/QuietFilingRow'
 import { useNotify } from '../hooks/useNotify'
 import { useSSE } from '../hooks/useSSE'
 import { useWatchlist } from '../hooks/useWatchlist'
-import type { Alert, AlertFilters, Health } from '../types'
+import type { Alert, AlertFilters, Health, QuietFiling } from '../types'
 
 const DEFAULT_FILTERS: AlertFilters = {
   direction: 'all',
@@ -20,6 +21,7 @@ const DEFAULT_FILTERS: AlertFilters = {
 export function Home() {
   const [filters, setFilters] = useState<AlertFilters>(DEFAULT_FILTERS)
   const [alerts, setAlerts] = useState<Alert[]>([])
+  const [quietFilings, setQuietFilings] = useState<QuietFiling[]>([])
   const [freshIds, setFreshIds] = useState<Set<number>>(new Set())
   const [selected, setSelected] = useState<Alert | null>(null)
   const [health, setHealth] = useState<Health | null>(null)
@@ -52,9 +54,10 @@ export function Home() {
       // Seed with the 5 most recent alerts; SSE prepends newer ones (deduped by id).
       // small/mid is a client-only multi-bucket filter — over-fetch then trim to 5.
       const overFetch = filters.market_cap_bucket === 'small,mid'
-      const [raw, h] = await Promise.all([
+      const [raw, h, quiet] = await Promise.all([
         fetchAlerts({ ...apiFilters, limit: overFetch ? 40 : 5 }),
         fetchHealth(),
+        fetchNonAlertFilings(20),
       ])
       let a = raw
       if (overFetch) {
@@ -68,6 +71,7 @@ export function Home() {
           .slice(0, 5)
       }
       setAlerts(a)
+      setQuietFilings(quiet)
       setHealth(h)
       setError(null)
     } catch (e) {
@@ -159,7 +163,7 @@ export function Home() {
 
         <section className="mt-2">
           {visible.length === 0 ? (
-            <p className="animate-fade-up py-16 text-center text-mist">
+            <p className="animate-fade-up py-12 text-center text-mist">
               No alerts match these filters yet.
             </p>
           ) : (
@@ -173,6 +177,29 @@ export function Home() {
                 onToggleWatch={toggle}
               />
             ))
+          )}
+        </section>
+
+        <section className="mt-10 animate-fade-up">
+          <div className="mb-3">
+            <h2 className="font-display text-lg font-semibold text-foam">
+              Seen, not alerted
+            </h2>
+            <p className="text-xs text-mist">
+              Recent EDGAR filings ingested here that did not clear the alert bar
+              (e.g. Form 4 without an officer/director open-market buy).
+            </p>
+          </div>
+          {quietFilings.length === 0 ? (
+            <p className="py-6 text-center text-sm text-mist/70">
+              No quiet filings yet — poller may still be warming up.
+            </p>
+          ) : (
+            <div className="rounded-md border border-line/50 bg-panel/30 px-2">
+              {quietFilings.map((f) => (
+                <QuietFilingRow key={f.id} filing={f} />
+              ))}
+            </div>
           )}
         </section>
       </main>

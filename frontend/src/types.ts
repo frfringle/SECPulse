@@ -66,3 +66,17 @@ export interface AlertFilters {
   min_confidence: number
   market_cap_bucket: string
 }
+
+/** Ingested EDGAR filing that did not produce an alert. */
+export interface QuietFiling {
+  id: number
+  accession_number: string
+  ticker: string
+  form_type: string
+  company_name: string
+  accepted_at: string | null
+  ingested_at: string | null
+  score_status: string | null
+  filing_url: string | null
+  reason: string
+}

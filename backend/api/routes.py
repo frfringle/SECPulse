@@ -131,6 +131,67 @@ def get_alert(alert_id: int) -> JSONResponse:
         )
 
 
+def _non_alert_reason(filing: Filing) -> str:
+    """Short stub explaining why an ingested filing is not in the alert feed."""
+    status = (filing.score_status or "").strip().lower()
+    form = (filing.form_type or "").upper()
+    if status == "awaiting_ollama":
+        return "Queued / awaiting Ollama score"
+    if status == "alerted":
+        return "Alerted (see live feed)"
+    if form.startswith("4"):
+        if status in {"", "scored", "pending"} or status is None:
+            return "No officer/director open-market buy (Form 4 code P)"
+        return f"Form 4 not alerted ({status})"
+    if status == "scored":
+        return "Scored below threshold or neutral — not actionable"
+    if filing.queue_reason:
+        return f"Ingested ({filing.queue_reason})"
+    if filing.content_parsed is False:
+        return "Ingested; content parse incomplete"
+    return "Ingested; no alert generated"
+
+
+@router.get("/api/filings/non-alerts")
+def list_non_alert_filings(
+    limit: int = Query(25, ge=1, le=100),
+) -> JSONResponse:
+    """Recent EDGAR filings that were ingested but did not produce an alert."""
+    with session_scope() as session:
+        alerted_ids = {
+            a.filing_id
+            for a in session.exec(select(Alert)).all()
+            if a.filing_id is not None
+        }
+        rows = list(
+            session.exec(
+                select(Filing).order_by(Filing.accepted_at.desc())  # type: ignore[attr-defined]
+            ).all()
+        )
+        non = [
+            f
+            for f in rows
+            if f.id not in alerted_ids
+            and not (f.accession_number or "").startswith("0000000000-26-")
+        ][:limit]
+        payload = [
+            {
+                "id": f.id,
+                "accession_number": f.accession_number,
+                "ticker": f.ticker,
+                "form_type": f.form_type,
+                "company_name": f.company_name,
+                "accepted_at": f.accepted_at.isoformat() if f.accepted_at else None,
+                "ingested_at": f.ingested_at.isoformat() if f.ingested_at else None,
+                "score_status": f.score_status,
+                "filing_url": f.filing_url,
+                "reason": _non_alert_reason(f),
+            }
+            for f in non
+        ]
+    return JSONResponse({"filings": payload, "count": len(payload)})
+
+
 def _fallback_history_from_alerts(alerts: list) -> list[dict]:
     """Build a short daily series from alert enrichment prices when Yahoo is empty."""
     from datetime import timedelta, timezone

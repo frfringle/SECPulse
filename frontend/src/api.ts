@@ -1,4 +1,4 @@
-import type { Alert, AlertFilters, Health, TickerDetail } from './types'
+import type { Alert, AlertFilters, Health, QuietFiling, TickerDetail } from './types'
 
 /** Empty = same-origin (FastAPI SPA or Vite proxy). Set VITE_API_URL for Netlify → remote API. */
 export const API_BASE = String(import.meta.env.VITE_API_URL ?? '').replace(/\/$/, '')
@@ -54,6 +54,13 @@ export async function fetchTicker(ticker: string): Promise<TickerDetail> {
   const r = await fetch(apiUrl(`/api/tickers/${encodeURIComponent(ticker)}`))
   if (!r.ok) throw new Error('ticker failed')
   return r.json()
+}
+
+export async function fetchNonAlertFilings(limit = 20): Promise<QuietFiling[]> {
+  const r = await fetch(apiUrl(`/api/filings/non-alerts${qs({ limit })}`))
+  if (!r.ok) throw new Error('non-alert filings failed')
+  const data = await r.json()
+  return data.filings ?? []
 }
 
 export function filingUrl(accession: string, filingUrlHint?: string): string {
