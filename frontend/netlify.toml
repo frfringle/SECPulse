@@ -1,0 +1,16 @@
+# Static SPA only — the Python FastAPI backend (poller, SSE, scoring) cannot run on Netlify.
+# Point the UI at a publicly reachable API via VITE_API_URL at build time.
+# See docs/netlify-deploy.md (or repo docs after push).
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+  # From monorepo root you may set: base = "frontend"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[build.environment]
+  NODE_VERSION = "22"

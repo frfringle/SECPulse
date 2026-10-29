@@ -1,0 +1,22 @@
+{
+  "aliases": [
+    {"assignee": "Apple Inc", "ticker": "AAPL", "company_name": "Apple Inc."},
+    {"assignee": "Apple Inc.", "ticker": "AAPL", "company_name": "Apple Inc."},
+    {"assignee": "Tesla, Inc", "ticker": "TSLA", "company_name": "Tesla, Inc."},
+    {"assignee": "Tesla, Inc.", "ticker": "TSLA", "company_name": "Tesla, Inc."},
+    {"assignee": "Microsoft Corporation", "ticker": "MSFT", "company_name": "Microsoft Corp"},
+    {"assignee": "Microsoft Corp", "ticker": "MSFT", "company_name": "Microsoft Corp"},
+    {"assignee": "TTM Technologies, Inc", "ticker": "TTMI", "company_name": "TTM TECHNOLOGIES INC"},
+    {"assignee": "TTM Technologies Inc", "ticker": "TTMI", "company_name": "TTM TECHNOLOGIES INC"},
+    {"assignee": "TTM TECHNOLOGIES INC", "ticker": "TTMI", "company_name": "TTM TECHNOLOGIES INC"},
+    {"assignee": "NVIDIA Corporation", "ticker": "NVDA", "company_name": "NVIDIA Corp"},
+    {"assignee": "Advanced Micro Devices, Inc", "ticker": "AMD", "company_name": "Advanced Micro Devices Inc"},
+    {"assignee": "Amazon Technologies, Inc", "ticker": "AMZN", "company_name": "Amazon.com Inc"},
+    {"assignee": "Alphabet Inc", "ticker": "GOOGL", "company_name": "Alphabet Inc"},
+    {"assignee": "Google LLC", "ticker": "GOOGL", "company_name": "Alphabet Inc"},
+    {"assignee": "Meta Platforms, Inc", "ticker": "META", "company_name": "Meta Platforms Inc"},
+    {"assignee": "ServiceNow, Inc", "ticker": "NOW", "company_name": "ServiceNow, Inc."},
+    {"assignee": "Voya Financial, Inc", "ticker": "VOYA", "company_name": "Voya Financial, Inc."},
+    {"assignee": "Weave Communications, Inc", "ticker": "WEAV", "company_name": "Weave Communications, Inc."}
+  ]
+}

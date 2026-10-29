@@ -1,0 +1,141 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Syne", ui-sans-serif, sans-serif;
+  --font-sans: "Manrope", ui-sans-serif, sans-serif;
+  --color-ink: #0b0f0c;
+  --color-ink-2: #101710;
+  --color-panel: #151c16;
+  --color-panel-2: #1a231c;
+  --color-line: #243028;
+  --color-mist: #8a9a8e;
+  --color-foam: #e8f0ea;
+  --color-bull: #3dd68c;
+  --color-bull-dim: rgba(61, 214, 140, 0.14);
+  --color-bear: #ff6b4a;
+  --color-bear-dim: rgba(255, 107, 74, 0.14);
+  --color-accent: #c8f560;
+  --color-accent-dim: rgba(200, 245, 96, 0.12);
+}
+
+@layer base {
+  * {
+    box-sizing: border-box;
+  }
+
+  html,
+  body,
+  #root {
+    min-height: 100%;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-sans);
+    color: var(--color-foam);
+    background:
+      radial-gradient(1200px 600px at 10% -10%, rgba(200, 245, 96, 0.08), transparent 55%),
+      radial-gradient(900px 500px at 100% 0%, rgba(61, 214, 140, 0.07), transparent 50%),
+      linear-gradient(180deg, #0d130f 0%, var(--color-ink) 40%, #090c0a 100%);
+    background-attachment: fixed;
+  }
+
+  body::before {
+    content: "";
+    pointer-events: none;
+    position: fixed;
+    inset: 0;
+    opacity: 0.035;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+    z-index: 0;
+  }
+
+  #root {
+    position: relative;
+    z-index: 1;
+  }
+
+  a {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  button {
+    font: inherit;
+  }
+}
+
+@keyframes alert-in {
+  from {
+    opacity: 0;
+    transform: translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.35);
+    opacity: 0.55;
+  }
+}
+
+@keyframes drawer-in {
+  from {
+    opacity: 0;
+    transform: translateX(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-alert-in {
+  animation: alert-in 0.45s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-drawer-in {
+  animation: drawer-in 0.35s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade-up {
+  animation: fade-up 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.8s ease-in-out infinite;
+}
+
+.field {
+  min-width: 7.5rem;
+  border-radius: 0.4rem;
+  border: 1px solid var(--color-line);
+  background: var(--color-panel);
+  color: var(--color-foam);
+  padding: 0.4rem 0.55rem;
+  font-size: 0.8125rem;
+}
+
+.field:focus {
+  outline: 1px solid color-mix(in oklab, var(--color-accent) 50%, transparent);
+}

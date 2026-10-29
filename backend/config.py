@@ -6,6 +6,7 @@ import re
 import sys
 from functools import lru_cache
 from pathlib import Path
+from typing import Optional
 
 from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -48,6 +49,53 @@ class Settings(BaseSettings):
     ticker_cache_path: Path = Field(
         default=PROJECT_ROOT / "data" / "ticker_cache.json",
     )
+    # Approx token budget for combined 8-K / 13D text fed to Ollama
+    token_budget: int = Field(default=4000, alias="TOKEN_BUDGET")
+
+    ollama_base_url: str = Field(
+        default="http://localhost:11434",
+        alias="OLLAMA_BASE_URL",
+    )
+    ollama_model: str = Field(
+        default="qwen2.5:1.5b-instruct",
+        alias="OLLAMA_MODEL",
+    )
+    ollama_timeout_seconds: float = Field(
+        default=60.0,
+        alias="OLLAMA_TIMEOUT_SECONDS",
+    )
+    alert_threshold: int = Field(default=65, alias="ALERT_THRESHOLD")
+
+    # Patent watch (optional — EDGAR keeps running if unset)
+    uspto_api_key: Optional[str] = Field(default=None, alias="USPTO_API_KEY")
+    uspto_poll_interval_seconds: int = Field(
+        default=600,
+        alias="USPTO_POLL_INTERVAL_SECONDS",
+    )
+    uspto_max_requests_per_second: float = Field(
+        default=1.0,
+        alias="USPTO_MAX_REQUESTS_PER_SECOND",
+    )
+    assignee_alias_path: Path = Field(
+        default=PROJECT_ROOT / "data" / "assignee_aliases.json",
+        alias="ASSIGNEE_ALIAS_PATH",
+    )
+
+    @field_validator("alert_threshold")
+    @classmethod
+    def validate_threshold(cls, value: int) -> int:
+        if value < 0 or value > 100:
+            raise ValueError("ALERT_THRESHOLD must be 0-100")
+        return value
+
+    @field_validator("uspto_api_key", mode="before")
+    @classmethod
+    def empty_uspto_key_to_none(cls, value: object) -> object:
+        if value is None:
+            return None
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @field_validator("sec_user_agent")
     @classmethod

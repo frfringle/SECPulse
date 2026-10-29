@@ -1,0 +1,38 @@
+{
+  "count": 2,
+  "patentFileWrapperDataBag": [
+    {
+      "applicationNumberText": "18111222",
+      "applicationMetaData": {
+        "inventionTitle": "Multi-layer printed circuit interconnect",
+        "firstApplicantName": "TTM Technologies, Inc",
+        "applicantBag": [
+          {
+            "applicantNameText": "TTM Technologies, Inc"
+          }
+        ],
+        "filingDate": "2024-06-01",
+        "earliestPublicationDate": "2025-01-15",
+        "applicationStatusDescriptionText": "Pending"
+      }
+    },
+    {
+      "applicationNumberText": "17199888",
+      "patentNumber": "12123456",
+      "grantDate": "2025-09-10",
+      "applicationMetaData": {
+        "inventionTitle": "High-density substrate with embedded capacitors",
+        "firstApplicantName": "TTM Technologies Inc",
+        "applicantBag": [
+          {
+            "applicantNameText": "TTM Technologies Inc"
+          }
+        ],
+        "filingDate": "2021-03-20",
+        "grantDate": "2025-09-10",
+        "patentNumber": "12123456",
+        "applicationStatusDescriptionText": "Patented Case"
+      }
+    }
+  ]
+}
