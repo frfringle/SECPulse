@@ -1,17 +1,20 @@
-"""SECPulse FastAPI application — Stage 6: API."""
+"""SECPulse FastAPI application — Stage 7: API + React UI."""
 
 from __future__ import annotations
 
 import logging
 import os
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from apscheduler.schedulers.background import BackgroundScheduler
 from fastapi import FastAPI
+from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from backend.api.routes import router as api_router
 from backend.api.state import app_state
-from backend.config import require_settings
+from backend.config import PROJECT_ROOT, require_settings
 from backend.db import init_db, session_scope
 from backend.logging_config import configure_logging
 from backend.scoring.ollama import OllamaClient
@@ -22,6 +25,8 @@ from backend.sec.rate_limiter import RateLimiter
 from backend.sec.ticker_cache import TickerCache
 
 logger = logging.getLogger(__name__)
+
+FRONTEND_DIST = PROJECT_ROOT / "frontend" / "dist"
 
 _scheduler: BackgroundScheduler | None = None
 _client: SecClient | None = None
@@ -46,7 +51,7 @@ async def lifespan(app: FastAPI):
     configure_logging(settings.log_level)
     init_db(settings.database_url)
     app_state.settings = settings
-    app_state.stage = 6
+    app_state.stage = 7
 
     if _should_start_background():
         _ollama = OllamaClient(
@@ -122,6 +127,42 @@ async def lifespan(app: FastAPI):
     logger.info("SECPulse shutdown complete")
 
 
+def _mount_frontend(application: FastAPI) -> None:
+    """Serve the Vite build when present (production / make run)."""
+    if not FRONTEND_DIST.is_dir():
+        logger.warning(
+            "frontend/dist missing — run `cd frontend && npm run build` "
+            "or use `make dev` with Vite proxy"
+        )
+        return
+
+    assets = FRONTEND_DIST / "assets"
+    if assets.is_dir():
+        application.mount(
+            "/assets",
+            StaticFiles(directory=str(assets)),
+            name="assets",
+        )
+
+    @application.get("/favicon.svg", include_in_schema=False)
+    def favicon():
+        path = FRONTEND_DIST / "favicon.svg"
+        if path.is_file():
+            return FileResponse(path)
+        return FileResponse(PROJECT_ROOT / "frontend" / "public" / "favicon.svg")
+
+    @application.get("/{full_path:path}", include_in_schema=False)
+    def spa_fallback(full_path: str):
+        # Never swallow API routes (mounted earlier)
+        if full_path.startswith("api/") or full_path == "api":
+            return {"detail": "Not Found"}
+        index = FRONTEND_DIST / "index.html"
+        candidate = FRONTEND_DIST / full_path
+        if full_path and candidate.is_file() and FRONTEND_DIST in candidate.resolve().parents:
+            return FileResponse(candidate)
+        return FileResponse(index)
+
+
 def create_app(*, start_background: bool | None = None) -> FastAPI:
     """App factory — set start_background=False for TestClient."""
     if start_background is not None:
@@ -129,10 +170,16 @@ def create_app(*, start_background: bool | None = None) -> FastAPI:
     application = FastAPI(
         title="SECPulse",
         version="0.1.0",
-        description="Personal SEC EDGAR alert dashboard (Stage 6: API)",
+        description="Personal SEC EDGAR alert dashboard (Stage 7: frontend)",
         lifespan=lifespan,
     )
     application.include_router(api_router)
+    if os.environ.get("SECPULSE_SKIP_FRONTEND", "").lower() not in {
+        "1",
+        "true",
+        "yes",
+    }:
+        _mount_frontend(application)
     return application
 
 

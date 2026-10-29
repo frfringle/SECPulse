@@ -9,7 +9,7 @@ from typing import Any, Optional
 
 @dataclass
 class AppState:
-    stage: int = 6
+    stage: int = 7
     last_poll_at: Optional[datetime] = None
     last_poll_inserted: int = 0
     last_poll_error: Optional[str] = None

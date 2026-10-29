@@ -176,7 +176,12 @@ def _as_float(value: Any) -> Optional[float]:
     if value is None:
         return None
     try:
-        return float(value)
+        import math
+
+        num = float(value)
+        if math.isnan(num) or math.isinf(num):
+            return None
+        return num
     except (TypeError, ValueError):
         return None
 

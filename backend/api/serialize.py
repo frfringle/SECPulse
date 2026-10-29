@@ -2,12 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Optional
 
 from backend.models import Alert
 
 
-def alert_to_dict(alert: Alert) -> dict[str, Any]:
+def alert_to_dict(alert: Alert, *, filing_url: Optional[str] = None) -> dict[str, Any]:
     return {
         "id": alert.id,
         "filing_id": alert.filing_id,
@@ -30,4 +30,5 @@ def alert_to_dict(alert: Alert) -> dict[str, Any]:
         "market_cap_bucket": alert.market_cap_bucket,
         "no_press_release": alert.no_press_release,
         "enrichment_error": alert.enrichment_error,
+        "filing_url": filing_url,
     }

@@ -20,6 +20,7 @@ from backend.sec.priority import PriorityQueue
 def api_client(tmp_path: Path, monkeypatch):
     monkeypatch.setenv("SEC_USER_AGENT", "SECPulse Test test@example.com")
     monkeypatch.setenv("SECPULSE_DISABLE_BACKGROUND", "1")
+    monkeypatch.setenv("SECPULSE_SKIP_FRONTEND", "1")
     monkeypatch.setenv("DATABASE_URL", f"sqlite:///{tmp_path / 'api.db'}")
 
     # Clear cached settings from prior tests
@@ -153,7 +154,7 @@ def test_health(api_client: TestClient):
     assert resp.status_code == 200
     data = resp.json()
     assert data["status"] == "ok"
-    assert data["stage"] == 6
+    assert data["stage"] == 7
     assert data["queue_size"] == 0
     assert data["ollama_reachable"] is True
     assert data["last_poll_at"] is not None

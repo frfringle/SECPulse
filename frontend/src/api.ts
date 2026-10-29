@@ -1,0 +1,50 @@
+import type { Alert, AlertFilters, Health, TickerDetail } from './types'
+
+function qs(params: Record<string, string | number | undefined | null>): string {
+  const sp = new URLSearchParams()
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '' || v === 'all') continue
+    sp.set(k, String(v))
+  }
+  const s = sp.toString()
+  return s ? `?${s}` : ''
+}
+
+export async function fetchHealth(): Promise<Health> {
+  const r = await fetch('/api/health')
+  if (!r.ok) throw new Error('health failed')
+  return r.json()
+}
+
+export async function fetchAlerts(filters: Partial<AlertFilters> = {}): Promise<Alert[]> {
+  const r = await fetch(
+    `/api/alerts${qs({
+      direction: filters.direction,
+      form_type: filters.form_type,
+      min_confidence: filters.min_confidence,
+      market_cap_bucket: filters.market_cap_bucket,
+      limit: 100,
+    })}`,
+  )
+  if (!r.ok) throw new Error('alerts failed')
+  const data = await r.json()
+  return data.alerts ?? []
+}
+
+export async function fetchAlert(id: number): Promise<Alert> {
+  const r = await fetch(`/api/alerts/${id}`)
+  if (!r.ok) throw new Error('alert not found')
+  return r.json()
+}
+
+export async function fetchTicker(ticker: string): Promise<TickerDetail> {
+  const r = await fetch(`/api/tickers/${encodeURIComponent(ticker)}`)
+  if (!r.ok) throw new Error('ticker failed')
+  return r.json()
+}
+
+export function filingUrl(accession: string, filingUrlHint?: string): string {
+  if (filingUrlHint) return filingUrlHint
+  // Best-effort EDGAR index search link
+  return `https://www.sec.gov/cgi-bin/browse-edgar?action=getcompany&filenum=&acc_no=${encodeURIComponent(accession)}&output=xml`
+}
